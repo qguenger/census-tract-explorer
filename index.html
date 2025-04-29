@@ -34,6 +34,9 @@
       fetch("combined_data.json").then(r => r.json())
     ]).then(([geojson, combined]) => {
     
+      console.log("✅ GeoJSON loaded:", geojson);
+      console.log("✅ combined_data sample (first 5 rows):", combined.slice(0,5));
+    
       // 1) Prep
       const metrics = [
         "Median home value",
@@ -41,14 +44,19 @@
         "Median monthly contract rent",
         "Vacant housing units"
       ];
+      // Log your JSON’s keys so you can verify spelling/casing
+      console.log("Fields in combined_data[0]:", Object.keys(combined[0]));
+    
       const geoidList = Array.from(
         new Set(combined.map(d => d.GEOID).filter(g => g !== "All Pittsburgh"))
       );
+      console.log("✔️ GEOID list (first 10):", geoidList.slice(0,10));
+    
       let selected = [];
       const palette = Plotly.d3.schemeCategory10;
     
       // 2) Draw the map
-      const mapTrace = {
+      Plotly.newPlot("map", [{
         type: "choroplethmapbox",
         geojson, locations: geoidList,
         z: Array(geoidList.length).fill(0),
@@ -62,19 +70,18 @@
         },
         customdata: geoidList,
         showscale: false
-      };
-      const mapLayout = {
-        mapbox: { style:"open-street-map", zoom:11, center:{lat:40.4406,lon: -79.9959} },
+      }], {
+        mapbox: { style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959} },
         margin:{t:30,r:0,l:0,b:0},
         clickmode:"event+select",
         title:"Click a Tract to (De)Select"
-      };
-      Plotly.newPlot("map",[mapTrace],mapLayout);
+      });
     
-      // 3) **Initial draw of the 4 charts** with All Pittsburgh
+      // 3) Initial draw of the 4 charts (All Pittsburgh)
       metrics.forEach((m, mi) => {
         const chartId = "chart" + (mi+1);
         const df = combined.filter(d => d.GEOID === "All Pittsburgh");
+        console.log(`Drawing initial chart for "${m}", data points:`, df.length);
         const trace = {
           x: df.map(d => d.Year),
           y: df.map(d => d[m]),
@@ -92,6 +99,7 @@
     
       // 4) Updater: recolor map + redraw charts
       function updateMapAndCharts() {
+        console.log("Updating charts, selected:", selected);
         // map borders
         const newColors = geoidList.map(g =>
           selected.includes(g)
@@ -114,6 +122,7 @@
           const chartId = "chart" + (mi+1);
           const traces = toPlot.map((g, idx) => {
             const df = combined.filter(d => d.GEOID === g);
+            console.log(`Updating "${m}" for tract "${g}", points:`, df.length);
             const color = palette[idx % palette.length];
             return {
               x: df.map(d => d.Year),
@@ -133,8 +142,7 @@
       }
     
       // 5) Wire up click handler
-      const mapDiv = document.getElementById("map");
-      mapDiv.on('plotly_click', pts => {
+      document.getElementById("map").on('plotly_click', pts => {
         const geoid = pts.points[0].customdata;
         const idx = selected.indexOf(geoid);
         if (idx > -1) selected.splice(idx,1);
@@ -142,8 +150,10 @@
         updateMapAndCharts();
       });
     
-    }).catch(console.error);
+    }).catch(err => {
+      console.error("❌ Failed to initialize dashboard:", err);
+    });
     </script>
-        
+            
 </body>
 </html>
