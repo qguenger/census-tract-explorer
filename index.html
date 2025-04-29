@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>Pittsburgh Neighborhood Explorer</title>
-  <!-- Turf.js for point-in-polygon -->
-  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <!-- Plotly.js pinned -->
+  <!-- Plotly.js -->
   <script src="https://cdn.plot.ly/plotly-2.29.0.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin:20px }
+    body { font-family: Arial; margin:20px }
     #map { width:60%; height:400px; margin:auto }
     #charts {
       display:grid;
@@ -32,57 +30,49 @@
 
 <script>
 Promise.all([
-  fetch("census_tracts.geojson").then(r=>r.json()),
-  fetch("City_of_Pittsburgh_Neighborhoods.geojson").then(r=>r.json()),
-  fetch("combined_data.json").then(r=>r.json())
-]).then(([tractsGeo, neighGeo, combined])=>{
+  fetch("tracts_with_hood.geojson").then(r => r.json()),
+  fetch("combined_data.json").then(r => r.json())
+]).then(([geojson, combined]) => {
 
-  // --- 1) Build GEOID→HOOD via Turf.js centroids ---
-  const hoodMap = {};
-  tractsGeo.features.forEach(f=>{
-    const centroid = turf.centroid(f);
-    const geoid   = f.properties.GEOID;
-    const hoodFeat = neighGeo.features
-      .find(n => turf.booleanPointInPolygon(centroid, n));
-    hoodMap[geoid] = hoodFeat ? hoodFeat.properties.HOOD : "Unknown";
-  });
-
-  // --- 2) Prep lists & reverse lookup ---
+  // 1) Prep
   const metrics   = [
     "Median home value",
     "Median household income",
     "Median monthly contract rent",
     "Vacant housing units"
   ];
-  const geoidList = tractsGeo.features.map(f=>f.properties.GEOID);
-  const hoodList  = geoidList.map(g=>hoodMap[g]);
+  const features  = geojson.features;
+  const geoidList = features.map(f => f.properties.GEOID);
+  const hoodList  = features.map(f => f.properties.HOOD);
+
+  // build reverse lookup: HOOD -> [GEOID,...]
   const hoodToGeo = {};
-  geoidList.forEach((g,i)=>{
-    const h = hoodList[i];
-    (hoodToGeo[h]||(hoodToGeo[h]=[])).push(g);
+  hoodList.forEach((h,i) => {
+    hoodToGeo[h] = hoodToGeo[h] || [];
+    hoodToGeo[h].push(geoidList[i]);
   });
 
-  // --- 3) Color palette & state ---
+  // Plotly palette
   const palette = [
     "#636efa","#ef553b","#00cc96","#ab63fa","#ffa15a",
     "#19d3f3","#ff6692","#b6e880","#ff97ff","#fecb52"
   ];
-  let selectedHoods = [];  // array of HOOD strings
+  let selectedHoods = [];
 
-  // --- 4) Draw base map (transparent fill, gray borders) ---
-  Plotly.newPlot("map",[{
-    type:"choroplethmapbox",
-    geojson: tractsGeo,
+  // 2) Draw base map
+  Plotly.newPlot("map", [{
+    type: "choroplethmapbox",
+    geojson: geojson,
     locations: geoidList,
-    z: Array(geoidList.length).fill(0),
-    colorscale:[[0,"rgba(0,0,0,0)"],[1,"rgba(0,0,0,0)"]],
-    zmin:0,zmax:1,
+    z: Array(geoidList.length).fill(0),      // dummy
+    colorscale: [[0,"rgba(0,0,0,0)"],[1,"rgba(0,0,0,0)"]],
+    zmin:0, zmax:1,
     featureidkey:"properties.GEOID",
-    marker:{
-      opacity:1,
-      line:{
-        color:Array(geoidList.length).fill("#555555"),
-        width:Array(geoidList.length).fill(0.5)
+    marker: {
+      opacity: 1,
+      line: {
+        color: Array(geoidList.length).fill("#555555"),
+        width: Array(geoidList.length).fill(0.5)
       }
     },
     customdata: geoidList,
@@ -90,26 +80,26 @@ Promise.all([
     hovertemplate:
       "Tract %{location}<br>Neighborhood: %{text}<extra></extra>",
     showscale:false
-  }],{
-    mapbox:{style:"open-street-map",zoom:11,center:{lat:40.4406,lon:-79.9959}},
+  }], {
+    mapbox: { style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959} },
     margin:{t:30,r:0,l:0,b:0},
     clickmode:"event",
     title:"Click tracts to toggle neighborhoods"
   });
 
-  // --- 5) Initial “All Pittsburgh” charts ---
+  // 3) Initial “All Pittsburgh” charts
   function drawAllPgh(){
     metrics.forEach((m,mi)=>{
       const df = combined.filter(d=>d.GEOID==="All Pittsburgh");
       Plotly.newPlot("chart"+(mi+1),[{
-        x:df.map(d=>d.Year),
-        y:df.map(d=>d[m]),
+        x: df.map(d=>d.Year),
+        y: df.map(d=>d[m]),
         mode:"lines+markers",
         name:"All Pittsburgh",
         line:{color:palette[0]},
         marker:{color:palette[0]}
       }],{
-        title:m,
+        title: m,
         xaxis:{title:"Year"},
         yaxis:{title:m}
       });
@@ -117,66 +107,66 @@ Promise.all([
   }
   drawAllPgh();
 
-  // --- 6) Update function for multi‐select neighborhoods ---
+  // 4) Update on multi‐select
   function updateDashboard(){
-    // recolor borders: any tract whose hood in selectedHoods gets its palette color
+    // recolor borders
     const lineColors = geoidList.map(g=>{
-      const h = hoodMap[g];
+      // find which hood this g belongs to
+      const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
       const idx = selectedHoods.indexOf(h);
-      return idx>-1 ? palette[idx%palette.length] : "#555555";
+      return idx >= 0 ? palette[idx % palette.length] : "#555555";
     });
-    const lineWidths = geoidList.map(g=>
-      selectedHoods.includes(hoodMap[g]) ? 3 : 0.5
-    );
-    Plotly.restyle("map",{
+    const lineWidths = geoidList.map(g=>{
+      const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
+      return selectedHoods.includes(h) ? 3 : 0.5;
+    });
+    Plotly.restyle("map", {
       "marker.line.color":[lineColors],
       "marker.line.width":[lineWidths]
     });
 
-    // decide chart data: if none selected, All Pittsburgh; else one line per selected hood
-    if(selectedHoods.length===0){
+    // redraw charts
+    if(selectedHoods.length === 0){
       return drawAllPgh();
     }
-
-    // precompute years
     const years = Array.from(new Set(combined.map(d=>d.Year))).sort();
-    metrics.forEach((m,mi)=>{
-      const traces = selectedHoods.map((h,hi)=>{
-        // sum metric m across all tracts in hood h, per year
-        const geoids = hoodToGeo[h];
+    metrics.forEach((m,mi) => {
+      const traces = selectedHoods.map((h,hi) => {
         const y = years.map(y0 =>
           combined
-            .filter(d=>d.Year===y0 && geoids.includes(d.GEOID))
-            .reduce((sum,d)=>sum + (d[m]||0), 0)
+            .filter(d=>d.Year===y0 && hoodToGeo[h].includes(d.GEOID))
+            .reduce((sum,d)=> sum + (d[m]||0), 0)
         );
         return {
           x: years,
           y: y,
-          mode:"lines+markers",
-          name:h,
-          line:{color:palette[hi%palette.length]},
-          marker:{color:palette[hi%palette.length]}
+          mode: "lines+markers",
+          name: h,
+          line:{color: palette[hi % palette.length]},
+          marker:{color: palette[hi % palette.length]}
         };
       });
       Plotly.react("chart"+(mi+1), traces, {
-        title:"Sum of " + m,
+        title: "Sum of " + m,
         xaxis:{title:"Year"},
         yaxis:{title:m}
       });
     });
   }
 
-  // --- 7) Wire up plotly_click to toggle neighborhoods ---
-  document.getElementById("map").on('plotly_click', ev=>{
-    const clickedGeoid = ev.points[0].customdata;
-    const clickedHood  = hoodMap[clickedGeoid];
-    const pos = selectedHoods.indexOf(clickedHood);
-    if(pos>-1) selectedHoods.splice(pos,1);
-    else        selectedHoods.push(clickedHood);
+  // 5) Wire up click
+  document.getElementById("map").on('plotly_click', ev => {
+    const geoid = ev.points[0].customdata;
+    const hood  = features.find(f=>f.properties.GEOID===geoid).properties.HOOD;
+    const idx = selectedHoods.indexOf(hood);
+    if(idx > -1) selectedHoods.splice(idx,1);
+    else         selectedHoods.push(hood);
     updateDashboard();
   });
 
-}).catch(console.error);
+}).catch(err=>{
+  console.error("Failed to load or render:", err);
+});
 </script>
 
 </body>
