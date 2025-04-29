@@ -64,16 +64,16 @@
         showscale: false
       };
       const mapLayout = {
-        mapbox: { style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959} },
+        mapbox: { style:"open-street-map", zoom:11, center:{lat:40.4406,lon: -79.9959} },
         margin:{t:30,r:0,l:0,b:0},
         clickmode:"event+select",
         title:"Click a Tract to (De)Select"
       };
       Plotly.newPlot("map",[mapTrace],mapLayout);
     
-      // 3) Initial draw of the 4 charts (All Pittsburgh)
+      // 3) **Initial draw of the 4 charts** with All Pittsburgh
       metrics.forEach((m, mi) => {
-        const chartId = "chart"+(mi+1);
+        const chartId = "chart" + (mi+1);
         const df = combined.filter(d => d.GEOID === "All Pittsburgh");
         const trace = {
           x: df.map(d => d.Year),
@@ -92,29 +92,29 @@
     
       // 4) Updater: recolor map + redraw charts
       function updateMapAndCharts() {
-        // map border styling
+        // map borders
         const newColors = geoidList.map(g =>
           selected.includes(g)
-            ? palette[selected.indexOf(g)%palette.length]
+            ? palette[selected.indexOf(g) % palette.length]
             : "white"
         );
         const newWidths = geoidList.map(g =>
-          selected.includes(g)? 3 : 0.5
+          selected.includes(g) ? 3 : 0.5
         );
         Plotly.restyle("map", {
           "marker.line.color": [newColors],
           "marker.line.width": [newWidths]
         });
     
-        // determine what to plot
+        // determine GEOIDs to plot
         const toPlot = selected.length ? selected : ["All Pittsburgh"];
     
-        // redraw each chart always with react
+        // redraw each chart via react
         metrics.forEach((m, mi) => {
-          const chartId = "chart"+(mi+1);
+          const chartId = "chart" + (mi+1);
           const traces = toPlot.map((g, idx) => {
             const df = combined.filter(d => d.GEOID === g);
-            const color = palette[idx%palette.length];
+            const color = palette[idx % palette.length];
             return {
               x: df.map(d => d.Year),
               y: df.map(d => d[m]),
@@ -132,7 +132,7 @@
         });
       }
     
-      // 5) Wire up clicks
+      // 5) Wire up click handler
       const mapDiv = document.getElementById("map");
       mapDiv.on('plotly_click', pts => {
         const geoid = pts.points[0].customdata;
@@ -144,6 +144,6 @@
     
     }).catch(console.error);
     </script>
-    
+        
 </body>
 </html>
