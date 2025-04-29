@@ -29,128 +29,121 @@
   </div>
 
   <script>
-  // 1) Fetch both files in parallel
-  Promise.all([
-    fetch("census_tracts.geojson").then(r => r.json()),
-    fetch("combined_data.json").then(r => r.json())
-  ]).then(([geojson, combined]) => {
-
-    // 2) Prep
-    const metrics = [
-      "Median home value",
-      "Median household income",
-      "Median monthly contract rent",
-      "Vacant housing units"
-    ];
-    // Extract unique tract GEOIDs (excluding the 'All Pittsburgh' row)
-    const geoidList = Array.from(new Set(
-      combined.map(d => d.GEOID).filter(g => g !== "All Pittsburgh")
-    ));
-    // We'll allow "All Pittsburgh" when nothing is selected
-    let selected = [];
-
-    // Qualitative palette (Plotly default)
-    const palette = Plotly.d3.schemeCategory10;
-
-    // 3) Draw the initial map
-    const mapTrace = {
-      type: "choroplethmapbox",
-      geojson: geojson,
-      locations: geoidList,
-      z: Array(geoidList.length).fill(0), // dummy
-      featureidkey: "properties.GEOID",
-      marker: {
-        opacity: 0.5,
-        line: {
-          color: Array(geoidList.length).fill("white"),
-          width: Array(geoidList.length).fill(0.5)
-        }
-      },
-      customdata: geoidList,
-      showscale: false
-    };
-    const mapLayout = {
-      mapbox: {
-        style: "open-street-map",
-        zoom: 11,
-        center: { lat: 40.4406, lon: -79.9959 }
-      },
-      margin: { t:30, r:0, l:0, b:0 },
-      clickmode: "event+select",
-      title: "Click a Tract to (De)Select"
-    };
-    Plotly.newPlot("map", [mapTrace], mapLayout);
-
-    // 4) Handler to update map styling & charts
-    function updateMapAndCharts() {
-      // -- Update map borders
-      const newLineColor = geoidList.map(g =>
-        selected.includes(g)
-          ? palette[selected.indexOf(g) % palette.length]
-          : "white"
+    Promise.all([
+      fetch("census_tracts.geojson").then(r => r.json()),
+      fetch("combined_data.json").then(r => r.json())
+    ]).then(([geojson, combined]) => {
+    
+      // 1) Prep
+      const metrics = [
+        "Median home value",
+        "Median household income",
+        "Median monthly contract rent",
+        "Vacant housing units"
+      ];
+      const geoidList = Array.from(
+        new Set(combined.map(d => d.GEOID).filter(g => g !== "All Pittsburgh"))
       );
-      const newLineWidth = geoidList.map(g =>
-        selected.includes(g) ? 3 : 0.5
-      );
-      Plotly.restyle("map", {
-        "marker.line.color": [newLineColor],
-        "marker.line.width": [newLineWidth]
-      });
-
-      // -- Determine which GEOIDs to plot
-      const toPlot = selected.length ? selected : ["All Pittsburgh"];
-
-      // -- Update each chart
-      toPlot.forEach((g, idx) => {
-        const col = palette[idx % palette.length];
-        metrics.forEach((m, mi) => {
-          const chartId = "chart" + (mi+1);
-          // Filter data
-          const df = combined.filter(d => d.GEOID === g);
-          const trace = {
-            x: df.map(d => d.Year),
-            y: df.map(d => d[m]),
-            mode: "lines+markers",
-            name: g,
-            line: { color: col },
-            marker: { color: col }
-          };
-          // If first render, use newPlot; else, restyle
-          if (idx === 0 && /*check if chart empty by div having no children*/ !document.getElementById(chartId).data) {
-            Plotly.newPlot(chartId, [trace], {
-              title: m,
-              xaxis: { title: "Year" },
-              yaxis: { title: m }
-            });
-          } else {
-            Plotly.react(chartId, [trace], {
-              title: m,
-              xaxis: { title: "Year" },
-              yaxis: { title: m }
-            });
+      let selected = [];
+      const palette = Plotly.d3.schemeCategory10;
+    
+      // 2) Draw the map
+      const mapTrace = {
+        type: "choroplethmapbox",
+        geojson, locations: geoidList,
+        z: Array(geoidList.length).fill(0),
+        featureidkey: "properties.GEOID",
+        marker: {
+          opacity: 0.5,
+          line: {
+            color: Array(geoidList.length).fill("white"),
+            width: Array(geoidList.length).fill(0.5)
           }
+        },
+        customdata: geoidList,
+        showscale: false
+      };
+      const mapLayout = {
+        mapbox: { style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959} },
+        margin:{t:30,r:0,l:0,b:0},
+        clickmode:"event+select",
+        title:"Click a Tract to (De)Select"
+      };
+      Plotly.newPlot("map",[mapTrace],mapLayout);
+    
+      // 3) Initial draw of the 4 charts (All Pittsburgh)
+      metrics.forEach((m, mi) => {
+        const chartId = "chart"+(mi+1);
+        const df = combined.filter(d => d.GEOID === "All Pittsburgh");
+        const trace = {
+          x: df.map(d => d.Year),
+          y: df.map(d => d[m]),
+          mode: "lines+markers",
+          name: "All Pittsburgh",
+          line: { color: palette[0] },
+          marker: { color: palette[0] }
+        };
+        Plotly.newPlot(chartId, [trace], {
+          title: m,
+          xaxis:{ title:"Year" },
+          yaxis:{ title:m }
         });
       });
-
-      // If multiple tracts selected, you may want to overlay them:
-      // you can adapt the above to push multiple traces per chart.
-    }
-
-    // 5) Wire up click handler
-    const mapDiv = document.getElementById("map");
-    mapDiv.on('plotly_click', pts => {
-      const geoid = pts.points[0].customdata;
-      const idx = selected.indexOf(geoid);
-      if (idx > -1) selected.splice(idx, 1);
-      else             selected.push(geoid);
-      updateMapAndCharts();
-    });
-
-    // 6) Initial draw of charts with "All Pittsburgh"
-    updateMapAndCharts();
-
-  }).catch(console.error);
-  </script>
-
+    
+      // 4) Updater: recolor map + redraw charts
+      function updateMapAndCharts() {
+        // map border styling
+        const newColors = geoidList.map(g =>
+          selected.includes(g)
+            ? palette[selected.indexOf(g)%palette.length]
+            : "white"
+        );
+        const newWidths = geoidList.map(g =>
+          selected.includes(g)? 3 : 0.5
+        );
+        Plotly.restyle("map", {
+          "marker.line.color": [newColors],
+          "marker.line.width": [newWidths]
+        });
+    
+        // determine what to plot
+        const toPlot = selected.length ? selected : ["All Pittsburgh"];
+    
+        // redraw each chart always with react
+        metrics.forEach((m, mi) => {
+          const chartId = "chart"+(mi+1);
+          const traces = toPlot.map((g, idx) => {
+            const df = combined.filter(d => d.GEOID === g);
+            const color = palette[idx%palette.length];
+            return {
+              x: df.map(d => d.Year),
+              y: df.map(d => d[m]),
+              mode: "lines+markers",
+              name: g,
+              line: { color },
+              marker: { color }
+            };
+          });
+          Plotly.react(chartId, traces, {
+            title: m,
+            xaxis:{ title:"Year" },
+            yaxis:{ title:m }
+          });
+        });
+      }
+    
+      // 5) Wire up clicks
+      const mapDiv = document.getElementById("map");
+      mapDiv.on('plotly_click', pts => {
+        const geoid = pts.points[0].customdata;
+        const idx = selected.indexOf(geoid);
+        if (idx > -1) selected.splice(idx,1);
+        else            selected.push(geoid);
+        updateMapAndCharts();
+      });
+    
+    }).catch(console.error);
+    </script>
+    
 </body>
 </html>
