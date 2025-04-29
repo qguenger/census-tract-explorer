@@ -28,7 +28,7 @@
     <div id="chart4" class="chart"></div>
   </div>
 
-  <script>
+  <script sr="https://cdn.plot.ly/plotly-2.29.0.min.js">
     Promise.all([
       fetch("census_tracts.geojson").then(r => r.json()),
       fetch("combined_data.json").then(r => r.json())
@@ -70,7 +70,7 @@
       }], {
         mapbox: { style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959} },
         margin:{t:30,r:0,l:0,b:0},
-        clickmode:"event+select",
+        clickmode:"event",
         title:"Click a Tract to (De)Select"
       });
     
