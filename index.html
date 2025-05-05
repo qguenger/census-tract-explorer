@@ -64,8 +64,8 @@
 
   <script>
   Promise.all([
-    fetch("tracts_with_hood.geojson").then(r=>r.json()),
-    fetch("combined_data.json").then(r=>r.json())
+    fetch("tracts_with_hood.geojson").then(r => r.json()),
+    fetch("combined_data.json").then(r => r.json())
   ]).then(([geojson, combined]) => {
 
     // ─── CONFIG ───────────────────────────────────────────────────────────────
@@ -90,15 +90,16 @@
       "Native American",
       "Asian"
     ];
+    // Prism palette (first 5 colors) from Plotly Express
     const demoPalette = [
-      "#66c2a5","#fc8d62","#8da0cb","#e78ac3","#a6d854"
+      'rgb(133, 92, 117)', 'rgb(217, 175, 107)', 'rgb(175, 100, 88)', 'rgb(115, 111, 76)', 'rgb(82, 106, 131)', 'rgb(98, 83, 119)'
     ];
     const hoodPalette = [
       "#636efa","#ef553b","#00cc96","#ab63fa","#ffa15a",
       "#19d3f3","#ff6692","#b6e880","#ff97ff","#fecb52"
     ];
 
-    // persistent color map
+    // Persistent color map for neighborhoods
     let hoodColorMap = { "All Pittsburgh": hoodPalette[0] };
     let nextColorIdx = 1;
 
@@ -106,7 +107,6 @@
     const features  = geojson.features.filter(f => f.properties.HOOD);
     const geoidList = features.map(f => f.properties.GEOID);
 
-    // reverse lookup: HOOD → [GEOID...]
     const hoodToGeo = {};
     features.forEach(f => {
       const h = f.properties.HOOD, g = f.properties.GEOID;
@@ -119,7 +119,9 @@
     features.forEach(f => {
       const h = f.properties.HOOD;
       hoodDemo[h] = hoodDemo[h] || demoCats.reduce((o,cat)=>(o[cat]=0,o), {});
-      demoCats.forEach(cat => hoodDemo[h][cat] += Number(f.properties[cat])||0 );
+      demoCats.forEach(cat => {
+        hoodDemo[h][cat] += Number(f.properties[cat])||0;
+      });
     });
     hoodDemo["All Pittsburgh"] = demoCats.reduce((o,cat)=>{
       o[cat] = Object.values(hoodDemo).reduce((s,h)=>s + h[cat],0);
@@ -133,44 +135,56 @@
     // ─── DRAW MAP ────────────────────────────────────────────────────────────────
     Plotly.newPlot("map",[{
       type:"choroplethmapbox",
-      geojson, locations:geoidList, z:Array(geoidList.length).fill(0),
+      geojson, locations:geoidList,
+      z:Array(geoidList.length).fill(0),
       colorscale:[[0,"rgba(0,0,0,0)"],[1,"rgba(0,0,0,0)"]],
       featureidkey:"properties.GEOID",
       marker:{
         opacity:1,
-        line:{ color:Array(geoidList.length).fill("#555555"),
-               width:Array(geoidList.length).fill(0.5) }
+        line:{
+          color:Array(geoidList.length).fill("#555555"),
+          width:Array(geoidList.length).fill(0.5)
+        }
       },
       customdata:geoidList,
       text:features.map(f=>f.properties.HOOD),
       hovertemplate:"Tract %{location}<br>Neighborhood: %{text}<extra></extra>",
       showscale:false
     }],{
-      mapbox:{style:"open-street-map",zoom:11,center:{lat:40.4406,lon:-79.9959}},
-      margin:{t:30,l:0,r:0,b:0},clickmode:"event",
+      mapbox:{style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959}},
+      margin:{t:30,l:0,r:0,b:0},
+      clickmode:"event",
       title:"Click tracts to toggle neighborhoods"
     });
 
     // ─── DRAW TIME SERIES ───────────────────────────────────────────────────────
     function drawTimeSeries(sel) {
       const hoods = sel.length ? sel : ["All Pittsburgh"];
-      metrics.forEach((m,i)=>{
-        const traces = hoods.map(h=>{
-          const xs=[], ys=[];
-          years.forEach(y=>{
-            const rows = combined.filter(d=>+d.Year===y && hoodToGeo[h].includes(d.GEOID));
+      metrics.forEach((m,i) => {
+        const traces = hoods.map(h => {
+          const xs = [], ys = [];
+          years.forEach(y => {
+            const rows = combined.filter(d =>
+              +d.Year===y && hoodToGeo[h].includes(d.GEOID)
+            );
             const vals = rows.map(d=>d[m]||0);
             xs.push(y);
             ys.push(vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null);
           });
           return {
-            type:"scatter",mode:"lines+markers",name:h,
-            x:xs,y:ys,
-            line:{color:hoodColorMap[h]},marker:{color:hoodColorMap[h]}
+            type:"scatter",
+            mode:"lines+markers",
+            name:h,
+            x:xs,
+            y:ys,
+            line:{color: hoodColorMap[h]},
+            marker:{color: hoodColorMap[h]}
           };
         });
-        Plotly.react("chart"+(i+1),traces,{
-          title:m,xaxis:{title:"Year"},yaxis:{title:m}
+        Plotly.react("chart"+(i+1), traces, {
+          title:m,
+          xaxis:{title:"Year"},
+          yaxis:{title:m}
         });
       });
     }
@@ -179,10 +193,12 @@
     let barMode = "percent";
     function drawBar(sel) {
       const hoods = sel.length ? sel : ["All Pittsburgh"];
-      const traces = demoCats.slice(1).map((cat,i)=>({
-        type:"bar",orientation:"h",name:demoLabels[i],
+      const traces = demoCats.slice(1).map((cat, i) => ({
+        type:"bar",
+        orientation:"h",
+        name:demoLabels[i],
         y:hoods,
-        x:hoods.map(h=>{
+        x:hoods.map(h => {
           const val = hoodDemo[h][cat]||0;
           if(barMode==="percent"){
             const tot = Object.values(hoodDemo[h]).reduce((a,b)=>a+b,0)||1;
@@ -190,9 +206,9 @@
           }
           return val;
         }),
-        marker:{color:demoPalette[i]}
+        marker:{color: demoPalette[i]}
       }));
-      Plotly.newPlot("bar-chart",traces,{
+      Plotly.newPlot("bar-chart", traces, {
         title: barMode==="percent"
           ? `Population Composition (${latestYear})`
           : `Population Counts (${latestYear})`,
@@ -201,22 +217,25 @@
           ? { barnorm:"fraction", xaxis:{tickformat:".0%"} }
           : {}),
         xaxis:{ title: barMode==="percent" ? "Share" : "Count" },
-        yaxis:{ automargin:true, title: "" }
+        yaxis:{ automargin:true, title:"" }
       });
     }
 
     // ─── UPDATE DASHBOARD ───────────────────────────────────────────────────────
     let selectedHoods = [];
     function updateDashboard(){
-      const lineCol = geoidList.map(g=>{
+      const lineColors = geoidList.map(g => {
         const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
         return hoodColorMap[h] || "#555555";
       });
-      const lineWd = geoidList.map(g=>{
-        const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
+      const lineWidths = geoidList.map(g => {
+        const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;  
         return selectedHoods.includes(h)?3:0.5;
       });
-      Plotly.restyle("map",{"marker.line.color":[lineCol],"marker.line.width":[lineWd]});
+      Plotly.restyle("map", {
+        "marker.line.color":[lineColors],
+        "marker.line.width":[lineWidths]
+      });
       drawTimeSeries(selectedHoods);
       drawBar(selectedHoods);
     }
@@ -228,7 +247,7 @@
     // ─── BUTTON HOOKUPS ─────────────────────────────────────────────────────────
     function setBarMode(mode) {
       barMode = mode;
-      document.querySelectorAll("#bar-controls button").forEach(btn=>{
+      document.querySelectorAll("#bar-controls button").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.mode===mode);
       });
       drawBar(selectedHoods);
@@ -237,25 +256,23 @@
       .addEventListener("click", ()=> setBarMode("percent"));
     document.getElementById("btn-count")
       .addEventListener("click", ()=> setBarMode("count"));
-
-    // kick off with percent active
     setBarMode("percent");
 
     // ─── MAP CLICK HANDLER ──────────────────────────────────────────────────────
-    document.getElementById("map").on('plotly_click',ev=>{
+    document.getElementById("map").on('plotly_click', ev => {
       const geoid = ev.points[0].customdata;
       const hood  = features.find(f=>f.properties.GEOID===geoid).properties.HOOD;
       if(!(hood in hoodColorMap)){
         hoodColorMap[hood] = hoodPalette[nextColorIdx % hoodPalette.length];
         nextColorIdx++;
       }
-      const i = selectedHoods.indexOf(hood);
-      if(i>-1) selectedHoods.splice(i,1);
-      else      selectedHoods.push(hood);
+      const idx = selectedHoods.indexOf(hood);
+      if(idx > -1) selectedHoods.splice(idx,1);
+      else          selectedHoods.push(hood);
       updateDashboard();
     });
 
-  }).catch(e=>console.error(e));
+  }).catch(e => console.error(e));
   </script>
 
 </body>
