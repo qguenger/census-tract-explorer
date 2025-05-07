@@ -5,143 +5,55 @@
   <title>Pittsburgh Neighborhood Explorer</title>
   <script src="https://cdn.plot.ly/plotly-2.29.0.min.js"></script>
   <style>
-    /* page background */
-    body {
-      margin: 0;
-      padding: 0;
-      background: #182444;
-      font-family: Arial, sans-serif;
-    }
-    /* white “island” container */
+    body { margin:0; padding:0; background:#182444; font-family:Arial,sans-serif }
     #container {
-      background: white;
-      max-width: 1200px;
-      margin: 20px auto 40px;
-      padding: 20px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      background:white; max-width:1200px; margin:20px auto 40px;
+      padding:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1);
     }
-    /* header with logo + title */
-    #header {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-    #header img {
-      height: 120px;
-      width: auto;
-    }
-    #header h1 {
-      margin: 0;
-      font-size: 32px;
-      color: #333;
-    }
-    /* separator */
-    #container hr {
-      margin: 20px 0;
-      border: none;
-      border-top: 1px solid #ccc;
-    }
-    /* intro text */
-    #intro {
-      font-size: 16px;
-      line-height: 1.5;
-      color: #555;
-      margin-bottom: 30px;
-    }
-    /* top section: map + bar */
-    #top {
-      display: flex;
-      gap: 20px;
-    }
-    #map-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    #map {
-      flex: 1;
-      height: 400px;
-    }
-    #map-controls {
-      margin-top: 6px;
-      text-align: left;
-    }
+    #header { display:flex; align-items:center; gap:20px }
+    #header img { height:130px; width:auto }
+    #header h1 { margin:0; font-size:32px; color:#333 }
+    #container hr { margin:20px 0; border:none; border-top:1px solid #ccc }
+    #intro { font-size:16px; line-height:1.5; color:#555; margin-bottom:30px }
+    #top { display:flex; gap:20px }
+    #map-wrapper { flex:1; display:flex; flex-direction:column }
+    #map { flex:1; height:400px }
+    #map-controls { margin-top:6px; text-align:left }
     #btn-clear {
-      font-size: 12px;
-      padding: 4px 8px;
-      border: 1px solid #333;
-      background: white;
-      border-radius: 3px;
-      cursor: pointer;
+      font-size:12px; padding:4px 8px; border:1px solid #333;
+      background:white; border-radius:3px; cursor:pointer;
     }
-    #bar-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
+    #bar-container { flex:1; display:flex; flex-direction:column }
     #bar-controls {
-      display: flex;
-      justify-content: center;
-      width: 100%;
-      margin-bottom: 10px;
+      display:flex; justify-content:center; width:100%; margin-bottom:10px;
     }
     #bar-controls button {
-      background: none;
-      border: none;
-      color: #333;
-      margin: 0 8px;
-      padding: 6px 12px;
-      font-size: 14px;
-      cursor: pointer;
+      background:none; border:none; color:#333; margin:0 8px;
+      padding:6px 12px; font-size:14px; cursor:pointer;
     }
     #bar-controls button.active {
-      background: #f5f5f5;
-      border: 1px solid #333;
-      border-radius: 4px;
+      background:#f5f5f5; border:1px solid #333; border-radius:4px;
     }
-    #bar-chart {
-      width: 100%;
-      height: 360px;
-    }
-    /* legend styling */
+    #bar-chart { width:100%; height:360px }
     #legend {
-      width: 80%;
-      margin: 20px auto 0;
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      align-items: center;
+      width:80%; margin:20px auto 0; display:flex;
+      justify-content:center; gap:16px; flex-wrap:wrap; align-items:center;
     }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      font-size: 14px;
-    }
+    .legend-item { display:flex; align-items:center; font-size:14px }
     .legend-line {
-      width: 20px;
-      height: 0;
-      border-top-width: 3px;
-      border-top-style: solid;
-      margin-right: 6px;
+      width:20px; height:0; border-top-width:3px; border-top-style:solid;
+      margin-right:6px;
     }
-    /* bottom time-series grid */
     #charts {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-gap: 20px;
-      margin-top: 20px;
+      display:grid; grid-template-columns:1fr 1fr; grid-gap:20px;
+      margin-top:20px;
     }
-    .chart {
-      width: 100%;
-      height: 300px;
-    }
+    .chart { width:100%; height:300px }
   </style>
 </head>
 <body>
 
   <div id="container">
-    <!-- Header -->
     <div id="header">
       <img src="logo.png" alt="Logo" />
       <h1>Pittsburgh Neighborhood Explorer</h1>
@@ -149,12 +61,10 @@
 
     <hr />
 
-    <!-- Intro text -->
     <div id="intro">
       Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.
     </div>
 
-    <!-- Map + Bar chart -->
     <div id="top">
       <div id="map-wrapper">
         <div id="map"></div>
@@ -171,10 +81,8 @@
       </div>
     </div>
 
-    <!-- Legend for time series -->
     <div id="legend"></div>
 
-    <!-- Four time-series plots -->
     <div id="charts">
       <div id="chart1" class="chart"></div>
       <div id="chart2" class="chart"></div>
@@ -185,18 +93,19 @@
 
   <script>
   Promise.all([
+    // ← point at your new lookup‐table GeoJSON
     fetch("tracts_with_hood_new.geojson").then(r => r.json()),
     fetch("combined_data.json").then(r => r.json())
   ]).then(([geojson, combined]) => {
-    // ─── MERGE 2010/2020 LOOKUP ────────────────────────────────────────────────
+    // ─── 1) MERGE YOUR TWO LOOKUP FIELDS INTO ONE `HOOD` PROPERTY ─────────────
     geojson.features.forEach(f => {
       f.properties.HOOD =
         f.properties.PGHNhood2020 ||
         f.properties.PGHNhood ||
-        "Unknown";
+        null;
     });
 
-    // ─── CONFIG ───────────────────────────────────────────────────────────────
+    // ─── 2) ALL OF YOUR EXISTING SETUP FOLLOWS UNCHANGED ──────────────────────
     const metrics = [
       "Median home value",
       "Median household income",
@@ -213,58 +122,58 @@
     ];
     const demoLabels = ["White","Black","Hispanic","Native American","Asian"];
     const demoPalette = [
-      'rgb(133, 92, 117)',
-      'rgb(217, 175, 107)',
-      'rgb(175, 100, 88)',
-      'rgb(115, 111, 76)',
-      'rgb(82, 106, 131)',
-      'rgb(98, 83, 119)'
+      'rgb(133,92,117)','rgb(217,175,107)','rgb(175,100,88)',
+      'rgb(115,111,76)','rgb(82,106,131)','rgb(98,83,119)'
     ];
     const hoodPalette = [
       "#636efa","#ef553b","#00cc96","#ab63fa","#ffa15a",
       "#19d3f3","#ff6692","#b6e880","#ff97ff","#fecb52"
     ];
 
-    // persistent color + dash maps
     let hoodColorMap = { "All Pittsburgh": hoodPalette[0] };
     let hoodDashMap  = { "All Pittsburgh": "solid" };
     let nextColorIdx = 1;
+    let barMode = 'percent';
 
-    // features list & lookups
-    const features  = geojson.features.filter(f => f.properties.HOOD && f.properties.HOOD!=="Unknown");
+    // filter only those that got a HOOD from one of your tables
+    const features = geojson.features.filter(f => f.properties.HOOD);
     const geoidList = features.map(f => f.properties.GEOID);
+
+    // build the reverse lookup: HOOD → [GEOID,…]
     const hoodToGeo = {};
     features.forEach(f => {
       const h = f.properties.HOOD, g = f.properties.GEOID;
       (hoodToGeo[h] = hoodToGeo[h]||[]).push(g);
     });
+    // All‐Pittsburgh = every tract
     hoodToGeo["All Pittsburgh"] = geoidList.slice();
 
-    // aggregate demographics
+    // aggregate your demographic counts off the GeoJSON props
     const hoodDemo = {};
     features.forEach(f => {
       const h = f.properties.HOOD;
-      hoodDemo[h] = hoodDemo[h]|| demoCats.reduce((o,c)=>(o[c]=0,o),{});
+      hoodDemo[h] = hoodDemo[h] || demoCats.reduce((o,c)=>(o[c]=0,o),{});
       demoCats.forEach(c => {
         hoodDemo[h][c] += Number(f.properties[c])||0;
       });
     });
+    // city‐wide sums
     hoodDemo["All Pittsburgh"] = demoCats.reduce((o,c)=>{
-      o[c] = Object.values(hoodDemo).reduce((s,h)=>s + h[c],0);
+      o[c] = Object.values(hoodDemo).reduce((s,m)=>s + m[c], 0);
       return o;
     },{});
 
-    // time series years
     const years = Array.from(new Set(combined.map(d=>+d.Year))).sort();
     const latestYear = years[years.length-1];
 
-    // INITIAL MAP
+    // ─── INITIAL MAP ─────────────────────────────────────────────────────────
     Plotly.newPlot("map",[{
-      type:"choroplethmapbox",
-      geojson, locations:geoidList,
-      z:Array(geoidList.length).fill(0),
-      colorscale:[[0,"rgba(0,0,0,0)"],[1,"rgba(0,0,0,0)"]],
-      featureidkey:"properties.GEOID",
+      type: "choroplethmapbox",
+      geojson,
+      locations: geoidList,
+      z: Array(geoidList.length).fill(0),
+      colorscale: [[0,"rgba(0,0,0,0)"],[1,"rgba(0,0,0,0)"]],
+      featureidkey: "properties.GEOID",
       marker:{
         opacity:1,
         line:{
@@ -273,20 +182,20 @@
           dash:Array(geoidList.length).fill("solid")
         }
       },
-      customdata:geoidList,
-      text:features.map(f=>f.properties.HOOD),
-      hovertemplate:"Tract %{location}<br>Neighborhood: %{text}<extra></extra>",
-      showscale:false
+      customdata: geoidList,
+      text: features.map(f=>f.properties.HOOD),
+      hovertemplate: "Tract %{location}<br>Neighborhood: %{text}<extra></extra>",
+      showscale: false
     }],{
-      mapbox:{ style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959} },
+      mapbox:{ style:"open-street-map", zoom:10, center:{lat:40.4406,lon:-79.9979} },
       margin:{t:30,l:0,r:0,b:0},
       clickmode:"event",
       title:"Click tracts to toggle neighborhoods"
     });
 
-    // DRAW TIME SERIES + LEGEND
+    // ─── DRAW TIME SERIES & LEGEND ───────────────────────────────────────────
     function drawTimeSeries(sel) {
-      const hoods = sel.length? sel : ["All Pittsburgh"];
+      const hoods = sel.length ? sel : ["All Pittsburgh"];
       const legendDiv = document.getElementById("legend");
       legendDiv.innerHTML = "";
       hoods.forEach(h => {
@@ -294,15 +203,16 @@
         const item = document.createElement("div");
         item.className = "legend-item";
         item.innerHTML =
-          `<div class="legend-line" `+
-            `style="border-top-color:${color};border-top-style:${dash}"></div>${h}`;
+          `<div class="legend-line"`
+          + ` style="border-top-color:${color};border-top-style:${dash}"></div>${h}`;
         legendDiv.appendChild(item);
       });
+
       metrics.forEach((metric, idx) => {
         const traces = hoods.map(h => {
-          const xs=[], ys=[];
+          const xs = [], ys = [];
           years.forEach(y => {
-            const rows = combined.filter(d=>
+            const rows = combined.filter(d =>
               +d.Year===y && hoodToGeo[h].includes(d.GEOID)
             );
             const vals = rows.map(d=>d[metric]||0);
@@ -316,112 +226,111 @@
             type:'scatter',
             mode:'lines+markers',
             name:h,
-            x:xs, y:ys,
-            line:{color:hoodColorMap[h], dash:hoodDashMap[h]},
-            marker:{color:hoodColorMap[h]}
+            x: xs,
+            y: ys,
+            line:{ color: hoodColorMap[h], dash: hoodDashMap[h] },
+            marker:{ color: hoodColorMap[h] }
           };
         });
-        Plotly.react("chart"+(idx+1), traces,{
-          title:metric,
-          xaxis:{title:"Year"},
-          yaxis:{title:metric}
+
+        Plotly.react("chart"+(idx+1), traces, {
+          title: metric,
+          xaxis:{ title:"Year" },
+          yaxis:{ title:metric }
         });
       });
     }
 
-    // DRAW BAR CHART
-    let barMode="percent";
+    // ─── DRAW BAR CHART ───────────────────────────────────────────────────────
     function drawBar(sel) {
-      const hoods = sel.length? sel : ["All Pittsburgh"];
-      const traces = demoCats.slice(1).map((cat,i)=>({
-        type:'bar',orientation:'h',name:demoLabels[i],
-        y:hoods,
-        x:hoods.map(h=>{
-          const v= hoodDemo[h][cat]||0;
-          if(barMode==='percent'){
-            const t=Object.values(hoodDemo[h]).reduce((a,b)=>a+b,0)||1;
-            return v/t;
-          }
-          return v;
-        }),
-        marker:{color:demoPalette[i]}
-      }));
+      const hoods = sel.length ? sel : ["All Pittsburgh"];
+      const traces = demoCats.slice(1).map((cat, i) => {
+        const name = demoLabels[i];
+        return {
+          type: 'bar',
+          orientation: 'h',
+          name,
+          y: hoods,
+          x: hoods.map(h => {
+            const v = hoodDemo[h][cat]||0;
+            return barMode==='percent'
+              ? v/(Object.values(hoodDemo[h]).reduce((a,b)=>a+b,0)||1)
+              : v;
+          }),
+          marker: { color: demoPalette[i] },
+          hovertemplate: barMode==='percent'
+            ? '%{x:.2f}% ' + name + '<extra></extra>'
+            : '%{x:.4s} ' + name + '<extra></extra>'
+        };
+      });
+
       Plotly.newPlot("bar-chart", traces, {
         title: barMode==='percent'
           ? `Population Composition (${latestYear})`
           : `Population Counts (${latestYear})`,
         barmode:'stack',
         ...(barMode==='percent'
-          ? { barnorm:'fraction', xaxis:{tickformat:'.0%'} }
+          ? { barnorm:'percent', xaxis:{tickformat:'.0%'} }
           : {}),
-        xaxis:{title: barMode==='percent'? 'Share':'Count'},
-        yaxis:{automargin:true,title:""}
+        xaxis:{ title: barMode==='percent'? 'Share':'Count' },
+        yaxis:{ automargin:true, title:"" }
       });
     }
 
-    // UPDATE EVERYTHING
-    let selectedHoods=[];
-    function updateDashboard(){
-      // ONLY color if still selected; otherwise default gray
+    // ─── UPDATE DASHBOARD ─────────────────────────────────────────────────────
+    let selectedHoods = [];
+    function updateDashboard() {
       const cols = geoidList.map(g => {
         const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
         return selectedHoods.includes(h)
           ? hoodColorMap[h]
           : '#555555';
       });
-      const wds = geoidList.map(g=>{
+      const wds = geoidList.map(g => {
         const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
         return selectedHoods.includes(h)?3:0.5;
       });
-      const dsh = geoidList.map(g=>{
+      const dsh = geoidList.map(g => {
         const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
         return hoodDashMap[h]||'solid';
       });
+
       Plotly.restyle("map", {
         'marker.line.color':[cols],
         'marker.line.width':[wds],
         'marker.line.dash':[dsh]
       });
+
       drawTimeSeries(selectedHoods);
       drawBar(selectedHoods);
     }
 
-    // INITIAL DRAW
+    // ─── INITIAL DRAW ─────────────────────────────────────────────────────────
     drawTimeSeries([]);
     drawBar([]);
 
-    // BAR MODE BUTTONS
-    function setBarMode(m){
-      barMode=m;
-      document.querySelectorAll('#bar-controls button')
-        .forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
-      drawBar(selectedHoods);
-    }
+    // ─── BUTTON HOOKUPS ───────────────────────────────────────────────────────
     document.getElementById('btn-percent')
-      .addEventListener('click',()=>setBarMode('percent'));
+      .addEventListener('click', ()=>{ barMode='percent'; drawBar(selectedHoods); });
     document.getElementById('btn-count')
-      .addEventListener('click',()=>setBarMode('count'));
+      .addEventListener('click', ()=>{ barMode='count';   drawBar(selectedHoods); });
     document.getElementById('btn-clear')
-      .addEventListener('click',()=>{
-        selectedHoods=[];
-        updateDashboard();
-      });
-    setBarMode('percent');
+      .addEventListener('click', ()=>{ selectedHoods=[]; updateDashboard(); });
 
-    // MAP CLICK HANDLER (with max enforcement)
+    // ─── MAP CLICK HANDLER ────────────────────────────────────────────────────
     document.getElementById('map').on('plotly_click', ev=>{
       const geoid = ev.points[0].customdata;
       const hood  = features.find(f=>f.properties.GEOID===geoid).properties.HOOD;
-      if(!(hood in hoodColorMap)){
+      if (!(hood in hoodColorMap)) {
         const rawIdx = nextColorIdx++;
         const colIdx = rawIdx % hoodPalette.length;
         hoodColorMap[hood] = hoodPalette[colIdx];
-        hoodDashMap[hood]  = rawIdx>=hoodPalette.length ? 'dash':'solid';
+        hoodDashMap[hood]  = rawIdx >= hoodPalette.length ? 'dash' : 'solid';
       }
       const idx = selectedHoods.indexOf(hood);
-      if(idx>-1) selectedHoods.splice(idx,1);
+      if (idx > -1) selectedHoods.splice(idx,1);
       else {
-        if(selectedHoods.length>=hoodPalette.length){
+        if (selectedHoods.length >= hoodPalette.length) {
           alert("Maximum # of neighborhoods selected.");
           return;
         }
@@ -430,7 +339,7 @@
       updateDashboard();
     });
 
-  }).catch(e=>console.error(e));
+  }).catch(e => console.error(e));
   </script>
 
 </body>
