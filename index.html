@@ -27,7 +27,7 @@
       gap: 20px;
     }
     #header img {
-      height: 130px;
+      height: 120px;
       width: auto;
     }
     #header h1 {
@@ -151,8 +151,7 @@
 
     <!-- Intro text -->
     <div id="intro">
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum 
-      vestibulum.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.
     </div>
 
     <!-- Map + Bar chart -->
@@ -185,232 +184,253 @@
   </div>
 
   <script>
-    Promise.all([
-      fetch("tracts_with_hood.geojson").then(r => r.json()),
-      fetch("combined_data.json").then(r => r.json())
-    ]).then(([geojson, combined]) => {
-      const metrics = [
-        "Median home value",
-        "Median household income",
-        "Median monthly contract rent",
-        "Vacant housing units"
-      ];
-      const demoCats = [
-        "Total population",
-        "Persons of white race, not Hispanic origin",
-        "Persons of black race, not Hispanic origin",
-        "Persons of Hispanic origin",
-        "Persons of Native American race",
-        "Persons of Asian race (and Pacific Islander)"
-      ];
-      const demoLabels = ["White","Black","Hispanic","Native American","Asian"];
-      const demoPalette = [
-        'rgb(133, 92, 117)',
-        'rgb(217, 175, 107)',
-        'rgb(175, 100, 88)',
-        'rgb(115, 111, 76)',
-        'rgb(82, 106, 131)',
-        'rgb(98, 83, 119)'
-      ];
-      const hoodPalette = [
-        "#636efa","#ef553b","#00cc96","#ab63fa","#ffa15a",
-        "#19d3f3","#ff6692","#b6e880","#ff97ff","#fecb52"
-      ];
+  Promise.all([
+    fetch("tracts_with_hood_new.geojson").then(r => r.json()),
+    fetch("combined_data.json").then(r => r.json())
+  ]).then(([geojson, combined]) => {
+    // ─── MERGE 2010/2020 LOOKUP ────────────────────────────────────────────────
+    geojson.features.forEach(f => {
+      f.properties.HOOD =
+        f.properties.PGHNhood2020 ||
+        f.properties.PGHNhood ||
+        "Unknown";
+    });
 
-      let hoodColorMap = { "All Pittsburgh": hoodPalette[0] };
-      let hoodDashMap  = { "All Pittsburgh": "solid" };
-      let nextColorIdx = 1;
+    // ─── CONFIG ───────────────────────────────────────────────────────────────
+    const metrics = [
+      "Median home value",
+      "Median household income",
+      "Median monthly contract rent",
+      "Vacant housing units"
+    ];
+    const demoCats = [
+      "Total population",
+      "Persons of white race, not Hispanic origin",
+      "Persons of black race, not Hispanic origin",
+      "Persons of Hispanic origin",
+      "Persons of Native American race",
+      "Persons of Asian race (and Pacific Islander)"
+    ];
+    const demoLabels = ["White","Black","Hispanic","Native American","Asian"];
+    const demoPalette = [
+      'rgb(133, 92, 117)',
+      'rgb(217, 175, 107)',
+      'rgb(175, 100, 88)',
+      'rgb(115, 111, 76)',
+      'rgb(82, 106, 131)',
+      'rgb(98, 83, 119)'
+    ];
+    const hoodPalette = [
+      "#636efa","#ef553b","#00cc96","#ab63fa","#ffa15a",
+      "#19d3f3","#ff6692","#b6e880","#ff97ff","#fecb52"
+    ];
 
-      const features  = geojson.features.filter(f => f.properties.HOOD);
-      const geoidList = features.map(f => f.properties.GEOID);
-      const hoodToGeo = {};
-      features.forEach(f => {
-        const h = f.properties.HOOD, g = f.properties.GEOID;
-        (hoodToGeo[h] = hoodToGeo[h]||[]).push(g);
+    // persistent color + dash maps
+    let hoodColorMap = { "All Pittsburgh": hoodPalette[0] };
+    let hoodDashMap  = { "All Pittsburgh": "solid" };
+    let nextColorIdx = 1;
+
+    // features list & lookups
+    const features  = geojson.features.filter(f => f.properties.HOOD && f.properties.HOOD!=="Unknown");
+    const geoidList = features.map(f => f.properties.GEOID);
+    const hoodToGeo = {};
+    features.forEach(f => {
+      const h = f.properties.HOOD, g = f.properties.GEOID;
+      (hoodToGeo[h] = hoodToGeo[h]||[]).push(g);
+    });
+    hoodToGeo["All Pittsburgh"] = geoidList.slice();
+
+    // aggregate demographics
+    const hoodDemo = {};
+    features.forEach(f => {
+      const h = f.properties.HOOD;
+      hoodDemo[h] = hoodDemo[h]|| demoCats.reduce((o,c)=>(o[c]=0,o),{});
+      demoCats.forEach(c => {
+        hoodDemo[h][c] += Number(f.properties[c])||0;
       });
-      hoodToGeo["All Pittsburgh"] = geoidList.slice();
+    });
+    hoodDemo["All Pittsburgh"] = demoCats.reduce((o,c)=>{
+      o[c] = Object.values(hoodDemo).reduce((s,h)=>s + h[c],0);
+      return o;
+    },{});
 
-      const hoodDemo = {};
-      features.forEach(f => {
-        const h = f.properties.HOOD;
-        hoodDemo[h] = hoodDemo[h]|| demoCats.reduce((o,c)=>(o[c]=0,o),{});
-        demoCats.forEach(c=> hoodDemo[h][c]+=Number(f.properties[c])||0);
-      });
-      hoodDemo["All Pittsburgh"] = demoCats.reduce((o,c)=>{
-        o[c] = Object.values(hoodDemo).reduce((s,h)=>s+h[c],0);
-        return o;
-      },{});
+    // time series years
+    const years = Array.from(new Set(combined.map(d=>+d.Year))).sort();
+    const latestYear = years[years.length-1];
 
-      const years = Array.from(new Set(combined.map(d=>+d.Year))).sort();
-      const latestYear = years[years.length-1];
-
-      Plotly.newPlot("map",[{
-        type:"choroplethmapbox",
-        geojson, locations:geoidList,
-        z:Array(geoidList.length).fill(0),
-        colorscale:[[0,"rgba(0,0,0,0)"],[1,"rgba(0,0,0,0)"]],
-        featureidkey:"properties.GEOID",
-        marker:{
-          opacity:1,
-          line:{
-            color:Array(geoidList.length).fill("#555555"),
-            width:Array(geoidList.length).fill(0.5),
-            dash:Array(geoidList.length).fill("solid")
-          }
-        },
-        customdata:geoidList,
-        text:features.map(f=>f.properties.HOOD),
-        hovertemplate:"Tract %{location}<br>Neighborhood: %{text}<extra></extra>",
-        showscale:false
-      }],{
-        mapbox:{style:"open-street-map",zoom:10 ,center:{lat:40.4406,lon:-79.9979}},
-        margin:{t:30,l:0,r:0,b:0},
-        clickmode:"event",
-        title:"Click tracts to toggle neighborhoods"
-      });
-
-      function drawTimeSeries(sel) {
-        const hoods = sel.length ? sel : ["All Pittsburgh"];
-        const legendDiv = document.getElementById("legend");
-        legendDiv.innerHTML = "";
-        hoods.forEach(h => {
-          const color = hoodColorMap[h], dash = hoodDashMap[h];
-          const item = document.createElement("div");
-          item.className = "legend-item";
-          item.innerHTML =
-            `<div class="legend-line" `+
-              `style="border-top-color:${color};border-top-style:${dash}"></div>${h}`;
-          legendDiv.appendChild(item);
-        });
-        metrics.forEach((metric, idx) => {
-          const traces = hoods.map(h => {
-            const xs=[], ys=[];
-            years.forEach(y => {
-              const rows = combined.filter(d=>
-                +d.Year===y && hoodToGeo[h].includes(d.GEOID)
-              );
-              const vals = rows.map(d=>d[metric]||0);
-              xs.push(y);
-              ys.push(vals.length
-                ? vals.reduce((a,b)=>a+b,0)/vals.length
-                : null
-              );
-            });
-            return {
-              type:'scatter',
-              mode:'lines+markers',
-              name:h,
-              x:xs, y:ys,
-              line:{color:hoodColorMap[h], dash:hoodDashMap[h]},
-              marker:{color:hoodColorMap[h]}
-            };
-          });
-          Plotly.react("chart"+(idx+1), traces,{
-            title:metric,
-            xaxis:{title:"Year"},
-            yaxis:{title:metric}
-          });
-        });
-      }
-
-      let barMode="percent";
-      function drawBar(sel) {
-        const hoods = sel.length? sel : ["All Pittsburgh"];
-        const traces = demoCats.slice(1).map((cat,i)=>({
-          type:'bar',orientation:'h',name:demoLabels[i],
-          y:hoods,
-          x:hoods.map(h=>{
-            const v = hoodDemo[h][cat]||0;
-            if(barMode==='percent'){
-              const t = Object.values(hoodDemo[h]).reduce((a,b)=>a+b,0)||1;
-              return v/t;
-            }
-            return v;
-          }),
-          marker:{color: demoPalette[i]}
-        }));
-        Plotly.newPlot("bar-chart", traces, {
-          title: barMode==='percent'
-            ? `Population Composition (${latestYear})`
-            : `Population Counts (${latestYear})`,
-          barmode:'stack',
-          ...(barMode==='percent'
-            ? { barnorm:'fraction', xaxis:{tickformat:'.0%'} }
-            : {}),
-          xaxis:{ title: barMode==='percent'? 'Share':'Count' },
-          yaxis:{automargin:true,title:""}
-        });
-      }
-
-      let selectedHoods = [];
-      function updateDashboard(){
-        const cols = geoidList.map(g=>{
-          const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
-          return hoodColorMap[h]||'#555555';
-        });
-        const wds = geoidList.map(g=>{
-          const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
-          return selectedHoods.includes(h)?3:0.5;
-        });
-        const dsh = geoidList.map(g=>{
-          const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
-          return hoodDashMap[h]||'solid';
-        });
-        Plotly.restyle("map", {
-          'marker.line.color':[cols],
-          'marker.line.width':[wds],
-          'marker.line.dash':[dsh]
-        });
-        drawTimeSeries(selectedHoods);
-        drawBar(selectedHoods);
-      }
-
-      // initial draw
-      drawTimeSeries([]);
-      drawBar([]);
-
-      // bar mode buttons
-      function setBarMode(m){
-        barMode=m;
-        document.querySelectorAll('#bar-controls button')
-          .forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
-        drawBar(selectedHoods);
-      }
-      document.getElementById('btn-percent')
-        .addEventListener('click',()=>setBarMode('percent'));
-      document.getElementById('btn-count')
-        .addEventListener('click',()=>setBarMode('count'));
-      document.getElementById('btn-clear')
-        .addEventListener('click',()=>{
-          selectedHoods = [];
-          updateDashboard();
-        });
-      setBarMode('percent');
-
-      // map click handler
-      document.getElementById('map').on('plotly_click', ev=>{
-        const geoid = ev.points[0].customdata;
-        const hood  = features.find(f=>f.properties.GEOID===geoid).properties.HOOD;
-        if (!(hood in hoodColorMap)) {
-          const rawIdx = nextColorIdx++;
-          const colIdx = rawIdx % hoodPalette.length;
-          hoodColorMap[hood] = hoodPalette[colIdx];
-          hoodDashMap[hood]  = rawIdx >= hoodPalette.length ? 'dash' : 'solid';
+    // INITIAL MAP
+    Plotly.newPlot("map",[{
+      type:"choroplethmapbox",
+      geojson, locations:geoidList,
+      z:Array(geoidList.length).fill(0),
+      colorscale:[[0,"rgba(0,0,0,0)"],[1,"rgba(0,0,0,0)"]],
+      featureidkey:"properties.GEOID",
+      marker:{
+        opacity:1,
+        line:{
+          color:Array(geoidList.length).fill("#555555"),
+          width:Array(geoidList.length).fill(0.5),
+          dash:Array(geoidList.length).fill("solid")
         }
-        const idx = selectedHoods.indexOf(hood);
-        if (idx > -1) {
-          selectedHoods.splice(idx,1);
-        } else {
-          if (selectedHoods.length >= hoodPalette.length) {
-            alert("Maximum # of neighborhoods selected.");
-            return;
+      },
+      customdata:geoidList,
+      text:features.map(f=>f.properties.HOOD),
+      hovertemplate:"Tract %{location}<br>Neighborhood: %{text}<extra></extra>",
+      showscale:false
+    }],{
+      mapbox:{ style:"open-street-map", zoom:11, center:{lat:40.4406,lon:-79.9959} },
+      margin:{t:30,l:0,r:0,b:0},
+      clickmode:"event",
+      title:"Click tracts to toggle neighborhoods"
+    });
+
+    // DRAW TIME SERIES + LEGEND
+    function drawTimeSeries(sel) {
+      const hoods = sel.length? sel : ["All Pittsburgh"];
+      const legendDiv = document.getElementById("legend");
+      legendDiv.innerHTML = "";
+      hoods.forEach(h => {
+        const color = hoodColorMap[h], dash = hoodDashMap[h];
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.innerHTML =
+          `<div class="legend-line" `+
+            `style="border-top-color:${color};border-top-style:${dash}"></div>${h}`;
+        legendDiv.appendChild(item);
+      });
+      metrics.forEach((metric, idx) => {
+        const traces = hoods.map(h => {
+          const xs=[], ys=[];
+          years.forEach(y => {
+            const rows = combined.filter(d=>
+              +d.Year===y && hoodToGeo[h].includes(d.GEOID)
+            );
+            const vals = rows.map(d=>d[metric]||0);
+            xs.push(y);
+            ys.push(vals.length
+              ? vals.reduce((a,b)=>a+b,0)/vals.length
+              : null
+            );
+          });
+          return {
+            type:'scatter',
+            mode:'lines+markers',
+            name:h,
+            x:xs, y:ys,
+            line:{color:hoodColorMap[h], dash:hoodDashMap[h]},
+            marker:{color:hoodColorMap[h]}
+          };
+        });
+        Plotly.react("chart"+(idx+1), traces,{
+          title:metric,
+          xaxis:{title:"Year"},
+          yaxis:{title:metric}
+        });
+      });
+    }
+
+    // DRAW BAR CHART
+    let barMode="percent";
+    function drawBar(sel) {
+      const hoods = sel.length? sel : ["All Pittsburgh"];
+      const traces = demoCats.slice(1).map((cat,i)=>({
+        type:'bar',orientation:'h',name:demoLabels[i],
+        y:hoods,
+        x:hoods.map(h=>{
+          const v= hoodDemo[h][cat]||0;
+          if(barMode==='percent'){
+            const t=Object.values(hoodDemo[h]).reduce((a,b)=>a+b,0)||1;
+            return v/t;
           }
-          selectedHoods.push(hood);
-        }
+          return v;
+        }),
+        marker:{color:demoPalette[i]}
+      }));
+      Plotly.newPlot("bar-chart", traces, {
+        title: barMode==='percent'
+          ? `Population Composition (${latestYear})`
+          : `Population Counts (${latestYear})`,
+        barmode:'stack',
+        ...(barMode==='percent'
+          ? { barnorm:'fraction', xaxis:{tickformat:'.0%'} }
+          : {}),
+        xaxis:{title: barMode==='percent'? 'Share':'Count'},
+        yaxis:{automargin:true,title:""}
+      });
+    }
+
+    // UPDATE EVERYTHING
+    let selectedHoods=[];
+    function updateDashboard(){
+      // ONLY color if still selected; otherwise default gray
+      const cols = geoidList.map(g => {
+        const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
+        return selectedHoods.includes(h)
+          ? hoodColorMap[h]
+          : '#555555';
+      });
+      const wds = geoidList.map(g=>{
+        const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
+        return selectedHoods.includes(h)?3:0.5;
+      });
+      const dsh = geoidList.map(g=>{
+        const h = features.find(f=>f.properties.GEOID===g).properties.HOOD;
+        return hoodDashMap[h]||'solid';
+      });
+      Plotly.restyle("map", {
+        'marker.line.color':[cols],
+        'marker.line.width':[wds],
+        'marker.line.dash':[dsh]
+      });
+      drawTimeSeries(selectedHoods);
+      drawBar(selectedHoods);
+    }
+
+    // INITIAL DRAW
+    drawTimeSeries([]);
+    drawBar([]);
+
+    // BAR MODE BUTTONS
+    function setBarMode(m){
+      barMode=m;
+      document.querySelectorAll('#bar-controls button')
+        .forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
+      drawBar(selectedHoods);
+    }
+    document.getElementById('btn-percent')
+      .addEventListener('click',()=>setBarMode('percent'));
+    document.getElementById('btn-count')
+      .addEventListener('click',()=>setBarMode('count'));
+    document.getElementById('btn-clear')
+      .addEventListener('click',()=>{
+        selectedHoods=[];
         updateDashboard();
       });
+    setBarMode('percent');
 
-    }).catch(e=>console.error(e));
+    // MAP CLICK HANDLER (with max enforcement)
+    document.getElementById('map').on('plotly_click', ev=>{
+      const geoid = ev.points[0].customdata;
+      const hood  = features.find(f=>f.properties.GEOID===geoid).properties.HOOD;
+      if(!(hood in hoodColorMap)){
+        const rawIdx = nextColorIdx++;
+        const colIdx = rawIdx % hoodPalette.length;
+        hoodColorMap[hood] = hoodPalette[colIdx];
+        hoodDashMap[hood]  = rawIdx>=hoodPalette.length ? 'dash':'solid';
+      }
+      const idx = selectedHoods.indexOf(hood);
+      if(idx>-1) selectedHoods.splice(idx,1);
+      else {
+        if(selectedHoods.length>=hoodPalette.length){
+          alert("Maximum # of neighborhoods selected.");
+          return;
+        }
+        selectedHoods.push(hood);
+      }
+      updateDashboard();
+    });
+
+  }).catch(e=>console.error(e));
   </script>
 
 </body>
